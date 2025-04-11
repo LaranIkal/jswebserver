@@ -1,0 +1,44 @@
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="Content-Security-Policy" content="connect-src 'self'; font-src 'self';
+                          form-action 'self'; style-src 'self'; img-src 'self'; media-src 'self'">
+        <title>My Form.</title>  
+        <link rel="stylesheet" href="../css/styles.css">      
+      </head>
+      <body>
+        <script type="text/javascript" src="../js/ChangeColorFunction.jsc"></script>
+        <script type="text/javascript" src="../js/ajax/hellohtmlajax.jsc"></script>
+        <table><tr><td><img src="../img/icefox_blue.png" alt="ICEFOX"></td><td> <h2>HTML Forms</h2></td></tr></table>
+        <form action="/default/server/myformvariables.jss" method="post">
+          First name: <input type="text" id="01" name="fname" value="John"><br><br>
+          Last name: <input type="text" id="02" name="lname" value="Doe"><br><br>
+          Password: <input type="password" id="03" name="ccpassword" length="15"><br><br>
+          Enter your text:<br>
+            <textarea id="04" name="message" rows="10" cols="30">
+              The cat was playing in the garden.        Fucking cat, leave me alone.      
+            </textarea><br><br>
+            <input type="submit" value="Submit">
+        </form>
+        
+        <p onclick="myFunction(this, 'red')">Click me to change my text color.</p>  
+
+        <p> Showing how to use AJAX, choose a value:<br>
+          <!-- /hellohtmlajax -->
+          <select id="valuetype1" name="valuetype1" onChange='JavaScript:xmlhttpPostValueType("/default/server/hellohtmlajax.jss",this.form,"10","valuetype1","Expresion1")'>
+          <option selected value="">---SELECT AN OPTION---</option>
+          <option value="ConstantValue">Constant Value</option>
+          <option value="QueryField">Query Field</option>
+          <option value="CrossReference">Cross Reference</option>
+          <option value="TransformationScript">Transformation Script</option>
+          </select><br><br>
+          
+          <div id="Expresion1">You will see your choosed record here</div>
+          
+          </p>        
+
+      </body>
+      </html>
+      

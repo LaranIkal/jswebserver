@@ -35,7 +35,7 @@ public class jswebserver extends HttpServlet {
 		String contextPath = req.getContextPath(); // Check why it is comming empty
     //Get the file asked in the URL, example: "/default/client/html/welcome.html" 
 		String requestURIcontextPath = requestURI.substring(contextPath.length()); 
-    // The full USL might be: http://localhost:9696/default/client/html/welcome.html
+    // The full URL might be: http://localhost:9696/default/client/html/welcome.html
 
     HttpSession session = req.getSession();
     String webPageParams = "webapps" + requestURIcontextPath; // Set path and filename as first parameter
@@ -104,7 +104,7 @@ public class jswebserver extends HttpServlet {
 		String contextPath = req.getContextPath(); // Check why it is comming empty
     //Get the file asked in the URL, example: "/default/client/html/welcome.html" 
 		String requestURIcontextPath = requestURI.substring(contextPath.length()); 
-    // The full USL might be: http://localhost:9696/default/client/html/welcome.html
+    // The full URL might be: http://localhost:9696/default/client/html/welcome.html
 
 		File file = new File("webapps", requestURIcontextPath); // webapps is the parent directory of the file.
 		if (!file.exists() || file.isDirectory()) {
@@ -169,14 +169,12 @@ public class jswebserver extends HttpServlet {
    */
 
   protected void getPageResponse(String webPageParams, HttpServletRequest req, HttpServletResponse resp, HttpSession session) throws IOException, FileNotFoundException {
-  //protected String getPageResponse(String webPageParams, HttpServletRequest req, HttpServletResponse resp, HttpSession session) throws Exception {
 
     String jsServerFile = webPageParams.split("&")[0]; // Get the JavaScript path and filename to execute.
 
-    Context jsContext = Context.newBuilder("js")
+    Context jsContext = Context.newBuilder("js", "regex")
                         .allowAllAccess(true)
-                        .allowHostAccess(HostAccess.ALL)
-                        .allowIO(true)
+                        .allowHostClassLookup(s -> true)
                         .option("engine.WarnInterpreterOnly", "false")
                         .build();
       
@@ -195,7 +193,6 @@ public class jswebserver extends HttpServlet {
 
     String jsResponse = jsContext.eval("js", myJsFile).toString();
 
-    //return(jsResponse);
     resp.getWriter().write(jsResponse);
   }
 
@@ -214,14 +211,13 @@ public class jswebserver extends HttpServlet {
    */
 
    protected void downloadFile(String webPageParams, HttpServletRequest req, HttpServletResponse resp, HttpSession session) throws IOException, FileNotFoundException {
-    //protected String getPageResponse(String webPageParams, HttpServletRequest req, HttpServletResponse resp, HttpSession session) throws Exception {
+
   
       String jsServerFile = webPageParams.split("&")[0]; // Get the JavaScript path and filename to execute.
   
-      Context jsContext = Context.newBuilder("js")
+      Context jsContext = Context.newBuilder("js", "regex")
                           .allowAllAccess(true)
-                          .allowHostAccess(HostAccess.ALL)
-                          .allowIO(true)
+                          .allowHostClassLookup(className -> true)
                           .option("engine.WarnInterpreterOnly", "false")
                           .build();
         

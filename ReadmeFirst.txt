@@ -12,9 +12,9 @@
   jswebserver.vbs: starts jswebserver under Windows in background mode.
   
   Linux:
-  jswebserver.ksh: Starts/Stop jswebserver under Linux in background mode, run it this way:
-    jswebserver.ksh start
-    jswebserver.ksh stop  
+  jswebserver.sh: Starts/Stop jswebserver under Linux in background mode, run it this way:
+    jswebserver.sh start
+    jswebserver.sh stop  
 
 ===>>> Directories and files inside jswebserver:
 

@@ -31,5 +31,5 @@ REM export DERBYDBNAME=myderbydb
 REM #export DERBYDBUSER=dbuser
 REM #export DERBYDBPASS=dbpassword
 
-java -cp jswebserver-1.0.jar;jarlib/* org.jswebserver.ServerLauncher
+java -cp jswebserver-1.1.jar;jarlib/* org.jswebserver.ServerLauncher
 

@@ -2,8 +2,9 @@ package org.jswebserver;
 
 //import java.net.URL;
 import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.servlet.ServletHolder;
-import org.eclipse.jetty.webapp.WebAppContext;
+import org.eclipse.jetty.ee10.servlet.ServletHolder;
+import org.eclipse.jetty.ee10.webapp.WebAppContext;
+import org.eclipse.jetty.util.resource.ResourceFactory;
 
 public class ServerLauncher {
 	public static void main(String[] args) {
@@ -23,7 +24,8 @@ public class ServerLauncher {
 		// Create a WebAppContext to hold the servlet.
 		WebAppContext context = new WebAppContext();
 		context.setContextPath(contextPath);
-		context.setResourceBase(".");
+		context.setWar(".");
+		//context.setResourceBase(".");
 		//context.setDescriptor("src/main/webapp/WEB-INF/web.xml");
 
 		// Add the content servlet to the context with dynamic path.

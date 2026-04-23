@@ -8,6 +8,7 @@ function CreateHtmlData(variables, session) {
   var webPageName = varValues[0] // First array element has the web page name.
   var fName = new Array("","")
   var lName = new Array("","")
+  var eMail = new Array("","")
   var ccPassword = new Array("","")
   var message = new Array("","")
   
@@ -20,6 +21,8 @@ function CreateHtmlData(variables, session) {
             
             if(myVar.substr(0, 5) === "lname") lName = arr[index].split("=")
                     
+            if(myVar.substr(0, 5) === "email") eMail = arr[index].split("=")
+
             if(myVar.substr(0, 10) === "ccpassword") ccPassword = arr[index].split("=")
                    
             if(myVar.substr(0, 7) === "message") message = arr[index].split("=")                                
@@ -33,6 +36,11 @@ function CreateHtmlData(variables, session) {
   myHtml += "<p><h2>Variables And Values</h2></p>"
   myHtml += "<p>" + fName[0] + "=" + fName[1] + "</p>"
   myHtml += "<p>" + lName[0] + "=" + lName[1] + "</p>"
+  myHtml += "<p>" + eMail[0] + "=" + eMail[1] + "</p>"
+
+  var emailCheckResult = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(eMail[1]) ? "valid email" : "invalid email"
+  myHtml += "<p>E-Mail Validation Result:" + emailCheckResult + " - validated using advanced regex.</p>"
+
   myHtml += "<p>" + ccPassword[0] + "=" + ccPassword[1] + "</p>"
   myHtml += "<p>" + message[0] + "=" + message[1] + "</p>"
   

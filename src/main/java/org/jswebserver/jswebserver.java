@@ -15,6 +15,14 @@ import java.util.Set;
 import java.io.*;
 import org.graalvm.polyglot.*;
 
+/**
+ * JavaScript Scripting using Java and GraalVM
+ *
+ * Compile with maven: 
+ * mvn clean package
+ *
+ */
+
 @WebServlet("/*")
 public class jswebserver extends HttpServlet {
 

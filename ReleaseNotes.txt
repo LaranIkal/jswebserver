@@ -1,10 +1,17 @@
 
+==>>> 2026/September/27 --- Version 1.1 
+  - Updated to work with JDK 25
+  - GraalVM Polytglot engine loaded at the first time a .jss files is executed, then reuse it for context evaluation.
+  - All JavaScript files used(Server or Client), must be with extension .jss
+  - New more reliable methods on Linux and Windows to start and stop jswebserver
+  - Using config.jss for database parameters. Not using anymore the environment variables to get database params.
+
 ==>>> 2026/April/22 --- Version 1.1 
   - Code cleaning. Delete reduntant allowIO, allowAllAccess already grants full IO access.
-  - Add regex and better approach to read the js code file, READ FILE: README.txt
+  - Add regex and better approach to read the js code file
   - Libraries updated versions.
 
-===>>> 2025/April/11 --- Version 1.0 INITIAL RELEASE, READ FILE: ReadmeFirst.txt
+===>>> 2025/April/11 --- Version 1.0 INITIAL RELEASE
 
 
 

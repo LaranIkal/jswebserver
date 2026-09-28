@@ -6,263 +6,158 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-//import jakarta.servlet.http.Part;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.nio.file.Path;
 import java.util.Map;
-import java.util.Set;
-import java.io.*;
-import org.graalvm.polyglot.*;
-
-/**
- * JavaScript Scripting using Java and GraalVM
- *
- * Compile with maven: 
- * mvn clean package
- *
- */
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 
 @WebServlet("/*")
 public class jswebserver extends HttpServlet {
 
+  // webapps is resolved once to an absolute, normalized path. Every requested file is checked
+  // against it below, so a URL like "/default/../../../../etc/passwd" can never escape webapps.
+  private static final Path WEBAPPS_ROOT = new File("webapps").getAbsoluteFile().toPath().normalize();
+
+  // One GraalVM engine for the whole server's lifetime. It's not used to run any script itself -
+  // each request still gets its own fresh Context for isolation (Contexts aren't safe to share
+  // across concurrent threads, and sharing one would leak JS globals between requests/users).
+  // What sharing the engine buys us is that every Context built from it reuses the engine's
+  // already-warmed compiled code, so per-request Context creation stops paying JS engine startup cost.
+  private Engine polyglotEngine;
+
+  @Override
+  public void init() throws ServletException {
+    polyglotEngine = Engine.newBuilder("js", "regex").option("engine.WarnInterpreterOnly", "false").build();
+  }
+
+  @Override
+  public void destroy() {
+    if (polyglotEngine != null) polyglotEngine.close();
+  }
+
   @Override
   protected void service(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-    // Set default content type to text/html
-    resp.setContentType("text/html");
+    resp.setContentType("text/html"); // default, overridden below for static files and downloads
     super.service(req, resp);
   }
 
-
-
-	@SuppressWarnings("unused")
   @Override
-	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+  protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    String path = req.getRequestURI().substring(req.getContextPath().length()); // e.g. "/default/client/html/welcome.html"
 
-		String requestURI = req.getRequestURI();
-		String contextPath = req.getContextPath(); // Check why it is comming empty
-    //Get the file asked in the URL, example: "/default/client/html/welcome.html" 
-		String requestURIcontextPath = requestURI.substring(contextPath.length()); 
-    // The full URL might be: http://localhost:9696/default/client/html/welcome.html
+    if (path.isEmpty() || path.equals("/")) { resp.getWriter().write(welcomePage()); return; }
 
-    HttpSession session = req.getSession();
-    String webPageParams = "webapps" + requestURIcontextPath; // Set path and filename as first parameter
+    File file = resolveFile(path, resp);
+    if (file == null) return; // resolveFile() already sent the 404
 
-		resp.setContentType("text/html;");
+    if (path.contains("/client/")) { serveStaticFile(file, resp); return; }
 
-		if (requestURIcontextPath == null || requestURIcontextPath.equals("/")) {
-			String welcomePage = "<html>" + 
-															"<head>" +
-																"<title>jswebserver: a small web framework for JavaScript</title>" + 
-															"</head>" + 
-															"<body>" +
-																"<h1>Welcome to JsWebServer. Check the readme on the project files.</h1>" +
-                                "<h1>If you have the default webapp, you may click <a href=/default/client/html/myform.html target=\"blank\">here</a></h1>" +
-															"</body>" +
-															"</html>";
-			resp.getWriter().write(welcomePage);
-			return;
-		}
-
-		File file = new File("webapps", requestURIcontextPath); // webapps is the parent directory of the file.
-		if (!file.exists() || file.isDirectory()) {
-      resp.sendError(HttpServletResponse.SC_NOT_FOUND);
-      return;
-		}
-
-    if( requestURIcontextPath.contains("/client/")) {
-      resp.setContentType(Files.probeContentType(Paths.get(file.getAbsolutePath())));
-      resp.setContentLengthLong(file.length());
-
-      try (FileInputStream fis = new FileInputStream(file);
-      OutputStream os = resp.getOutputStream()) {
-        byte[] buffer = new byte[1024];
-        int bytesRead;
-        while ((bytesRead = fis.read(buffer)) != -1) {
-          os.write(buffer, 0, bytesRead);
-        }
-      }
-    } else {
-      Map<String, String[]> parameterMap = req.getParameterMap();
-      Set<String> parameterNames = parameterMap.keySet();
-      for (String paramName : parameterNames) {
-        String[] paramValues = parameterMap.get(paramName); // Maybe the same param name has more than one value ==>> ('key1', ['value1', 'value2'])
-        for (String paramValue : paramValues) {
-          //resp.getWriter().println("Parameter: " + paramName + ", Value: " + paramValue);
-          webPageParams += "&" + paramName + "=" + paramValue;
-        }
-      }
-    
-      if(requestURIcontextPath.contains("/download/")) {
-        downloadFile(webPageParams, req, resp, session); // Reads and evaluates JavaScript program to download file
-      } else {
-        getPageResponse(webPageParams, req, resp, session); // Reads and evaluates JavaScript file
-      }
-      
-    }
-
-	}
-
-
+    handleDynamicRequest(path, req, resp);
+  }
 
   @Override
   protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    String path = req.getRequestURI().substring(req.getContextPath().length());
 
-		String requestURI = req.getRequestURI();
-		String contextPath = req.getContextPath(); // Check why it is comming empty
-    //Get the file asked in the URL, example: "/default/client/html/welcome.html" 
-		String requestURIcontextPath = requestURI.substring(contextPath.length()); 
-    // The full URL might be: http://localhost:9696/default/client/html/welcome.html
+    if (resolveFile(path, resp) == null) return; // resolveFile() already sent the 404
 
-		File file = new File("webapps", requestURIcontextPath); // webapps is the parent directory of the file.
-		if (!file.exists() || file.isDirectory()) {
-      resp.sendError(HttpServletResponse.SC_NOT_FOUND);
-      return;
-		}
-
-    HttpSession session = req.getSession();
-    String webPageParams = "webapps" + requestURIcontextPath; // Set path and filename as first parameter
-
-    // Ensure the upload directory exists
-    // File uploadDir = new File(UPLOAD_DIR);
-    // if (!uploadDir.exists()) {
-    //     uploadDir.mkdir();
-    // }
-
-    // Handle file upload
-    // for (Part part : req.getParts()) {
-    //     String fileName = part.getSubmittedFileName();
-    //     if (fileName != null && !fileName.isEmpty()) {
-    //         File file = new File(uploadDir, fileName);
-    //         try (InputStream inputStream = part.getInputStream();
-    //               FileOutputStream outputStream = new FileOutputStream(file)) {
-    //             byte[] buffer = new byte[1024];
-    //             int bytesRead;
-    //             while ((bytesRead = inputStream.read(buffer)) != -1) {
-    //                 outputStream.write(buffer, 0, bytesRead);
-    //             }
-    //         }
-    //     }
-    // }
-
-    Map<String, String[]> parameterMap = req.getParameterMap();
-    Set<String> parameterNames = parameterMap.keySet();
-    for (String paramName : parameterNames) {
-      String[] paramValues = parameterMap.get(paramName); // Maybe the same param name has more than one value ==>> ('key1', ['value1', 'value2'])
-      for (String paramValue : paramValues) {
-        //resp.getWriter().println("Parameter: " + paramName + ", Value: " + paramValue);
-        webPageParams += "&" + paramName + "=" + paramValue;
-      }
-    }
-
-    //resp.getWriter().println("File uploaded successfully!");
-    if( requestURIcontextPath.contains("/download/")) {
-      downloadFile(webPageParams, req, resp, session); // Reads and evaluates JavaScript program to download file
-    } else {
-      getPageResponse(webPageParams, req, resp, session); // Reads and evaluates JavaScript file
-    }
-  }  
-
-
-//########################################################################
-  //# Methods used by routes and actions
-  //########################################################################
-
-  /** Runs the logic for any web page.
-   * It serves both, get and post HTTP methods.
-   *
-   *  @param webPageParams the web page name and variables 
-   *  @throws IOException
-   *  @throws FileNotFoundException 
-   */
-
-  protected void getPageResponse(String webPageParams, HttpServletRequest req, HttpServletResponse resp, HttpSession session) throws IOException, FileNotFoundException {
-
-    String jsServerFile = webPageParams.split("&")[0]; // Get the JavaScript path and filename to execute.
-
-    Context jsContext = Context.newBuilder("js", "regex")
-                        .allowAllAccess(true)
-                        .allowHostClassLookup(s -> true)
-                        .option("engine.WarnInterpreterOnly", "false")
-                        .build();
-      
-    // Expose variables values as an array variable to JavaScript
-    jsContext.getBindings("js").putMember("webPageParams", webPageParams);
-    jsContext.getBindings("js").putMember("session", session);
-    jsContext.getBindings("js").putMember("response", resp);
-    jsContext.getBindings("js").putMember("request", req);  
-
-    // Read and evaluate main JavaScript File.
-    String myJsFile = "";
-    String line;
-    BufferedReader br = new BufferedReader(new FileReader(jsServerFile));
-    while ((line = br.readLine()) != null) { myJsFile += line + "\n"; }
-    br.close();
-
-    String jsResponse = jsContext.eval("js", myJsFile).toString();
-
-    resp.getWriter().write(jsResponse);
+    handleDynamicRequest(path, req, resp);
   }
 
+//########################################################################
+  //# Request routing helpers
+  //########################################################################
 
+  /** Resolves the requested path to a file under webapps and blocks any attempt to escape that
+   *  directory (e.g. "../../etc/passwd"). Sends a 404 and returns null if the file doesn't exist,
+   *  is a directory, or resolves outside webapps. */
+  private File resolveFile(String path, HttpServletResponse resp) throws IOException {
+    Path resolved = WEBAPPS_ROOT.resolve("." + path).normalize(); // "." + path keeps it relative to WEBAPPS_ROOT
+    File file = resolved.toFile();
+    if (!resolved.startsWith(WEBAPPS_ROOT) || !file.exists() || file.isDirectory()) {
+      resp.sendError(HttpServletResponse.SC_NOT_FOUND);
+      return null;
+    }
+    return file;
+  }
+
+  /** Streams a static file under .../client/ (html, css, js, images, etc) as-is. */
+  private void serveStaticFile(File file, HttpServletResponse resp) throws IOException {
+    String contentType = Files.probeContentType(file.toPath()); // can be null for unknown/uncommon extensions
+    resp.setContentType(contentType != null ? contentType : "application/octet-stream");
+    resp.setContentLengthLong(file.length());
+    try (FileInputStream fis = new FileInputStream(file); OutputStream os = resp.getOutputStream()) { fis.transferTo(os); }
+  }
+
+  /** Builds "webapps/<path>&param=value&..." from the request parameters, then dispatches to the
+   *  .jss page runner or the file-download runner depending on the URL. Shared by GET and POST. */
+  private void handleDynamicRequest(String path, HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    StringBuilder webPageParams = new StringBuilder("webapps").append(path);
+    for (Map.Entry<String, String[]> param : req.getParameterMap().entrySet()) {
+      for (String value : param.getValue()) { webPageParams.append('&').append(param.getKey()).append('=').append(value); } // same param name can repeat: key=[v1, v2]
+    }
+
+    HttpSession session = req.getSession();
+    if (path.contains("/download/")) { downloadFile(webPageParams.toString(), req, resp, session); }
+    else { getPageResponse(webPageParams.toString(), req, resp, session); }
+  }
+
+  private String welcomePage() {
+    return "<html><head><title>jswebserver: a small web framework for JavaScript</title></head>" +
+           "<body><h1>Welcome to JsWebServer. Check the readme on the project files.</h1>" +
+           "<h1>If you have the default webapp, you may click <a href=/default/client/html/myform.html target=\"blank\">here</a></h1>" +
+           "</body></html>";
+  }
 
 //########################################################################
   //# Methods used by routes and actions
   //########################################################################
 
-  /** Runs the logic for any web page.
-   * It serves both, get and post HTTP methods.
-   *
-   *  @param webPageParams the web page name and variables 
-   *  @throws IOException
-   *  @throws FileNotFoundException 
-   */
+  /** Runs the requested .jss file and writes its return value as the HTTP response body. Serves both GET and POST. */
+  protected void getPageResponse(String webPageParams, HttpServletRequest req, HttpServletResponse resp, HttpSession session) throws IOException {
+    resp.getWriter().write(runJsFile(webPageParams, req, resp, session));
+  }
 
-   protected void downloadFile(String webPageParams, HttpServletRequest req, HttpServletResponse resp, HttpSession session) throws IOException, FileNotFoundException {
+  /** Runs the requested .jss file, which must return the path of the file to send, then streams
+   *  that file back to the browser as an attachment. Serves both GET and POST. */
+  protected void downloadFile(String webPageParams, HttpServletRequest req, HttpServletResponse resp, HttpSession session) throws IOException {
+    String downloadFileName = runJsFile(webPageParams, req, resp, session);
+    String fileName = downloadFileName.substring(downloadFileName.lastIndexOf('/') + 1);
 
-  
-      String jsServerFile = webPageParams.split("&")[0]; // Get the JavaScript path and filename to execute.
-  
-      Context jsContext = Context.newBuilder("js", "regex")
-                          .allowAllAccess(true)
-                          .allowHostClassLookup(className -> true)
-                          .option("engine.WarnInterpreterOnly", "false")
-                          .build();
-        
-      // Expose variables values as an array variable to JavaScript
+    resp.setContentType("application/octet-stream");
+    resp.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
+
+    try (FileInputStream fis = new FileInputStream(downloadFileName); OutputStream os = resp.getOutputStream()) { fis.transferTo(os); }
+  }
+
+  /** Creates a fresh polyglot context from the shared engine (contexts are not thread-safe and must
+   *  not be shared across requests, so each request gets its own and it's closed in a try-with-resources
+   *  to avoid leaking native GraalVM resources), exposes request/response/session/webPageParams to
+   *  JavaScript, then evaluates the target .jss file. */
+  private String runJsFile(String webPageParams, HttpServletRequest req, HttpServletResponse resp, HttpSession session) throws IOException {
+    String jsServerFile = webPageParams.split("&")[0]; // path and filename of the .jss file to execute
+
+    try (Context jsContext = Context.newBuilder("js", "regex")
+                        .engine(polyglotEngine)
+                        .allowAllAccess(true)
+                        .allowHostClassLookup(className -> true)
+                        .build()) {
+
       jsContext.getBindings("js").putMember("webPageParams", webPageParams);
       jsContext.getBindings("js").putMember("session", session);
       jsContext.getBindings("js").putMember("response", resp);
-      jsContext.getBindings("js").putMember("request", req);  
-  
-      // Read and evaluate main JavaScript File.
-      String myJsFile = "";
-      String line;
-      BufferedReader br = new BufferedReader(new FileReader(jsServerFile));
-      while ((line = br.readLine()) != null) { myJsFile += line + "\n"; }
-      br.close();
-  
-      String downloadFileName = jsContext.eval("js", myJsFile).toString();
+      jsContext.getBindings("js").putMember("request", req);
 
-      String[] filePathName = downloadFileName.split("/");
-      String fileName = filePathName[filePathName.length-1];
-
-      resp.setContentType("application/octet-stream");
-      resp.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
-
-      try (FileInputStream fileInputStream = new FileInputStream(downloadFileName);
-        OutputStream outputStream = resp.getOutputStream()) {
-
-        byte[] buffer = new byte[1024];
-        int bytesRead;
-
-        while ((bytesRead = fileInputStream.read(buffer)) != -1) {
-          outputStream.write(buffer, 0, bytesRead);
-        }
-
-        outputStream.flush();
-      }      
-
+      String source = Files.readString(Path.of(jsServerFile), StandardCharsets.UTF_8);
+      return jsContext.eval("js", source).toString();
     }
+  }
 
 }

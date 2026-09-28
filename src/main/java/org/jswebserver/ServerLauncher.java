@@ -1,48 +1,30 @@
 package org.jswebserver;
 
-//import java.net.URL;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
-import org.eclipse.jetty.ee10.webapp.WebAppContext;
-import org.eclipse.jetty.util.resource.ResourceFactory;
 
+// Boots an embedded Jetty server hosting jswebserver, so the fat jar can be run directly with
+// "java -jar" or "java -cp jar:jarlib/*" as jswebserver.sh does, with no external servlet container.
 public class ServerLauncher {
-	public static void main(String[] args) {
 
-		//if (args.length != 1) {
-		  // System.err.println("Usage: java -jar embedded-jetty.jar <port> <context-path>");
-		//     System.exit(1);
-		//}
-		String contextPath = "/"; // args[1]; -- Can be switched to use args.
+  public static void main(String[] args) throws Exception {
+    // jswebserver.sh (Linux) sets the JSWEBSRVRPORT env var; the Windows start script instead
+    // passes -Djswebserver.port=..., since replacing only one env var via WMI on Windows would
+    // wipe out the rest of the process's environment block (PATH, TEMP, etc).
+    int port = Integer.parseInt(System.getProperty("jswebserver.port", System.getenv().getOrDefault("JSWEBSRVRPORT", "8080")));
 
-    Integer port = 9696;
-    if(System.getenv("JSWEBSRVRPORT") != null) { port = Integer.parseInt(System.getenv("JSWEBSRVRPORT")); }
+    Server server = new Server(port);
 
-		// Create a basic Jetty server object that will listen on port 9696.
-		Server server = new Server(port);
+    ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
+    context.setContextPath("/"); // root context, so req.getContextPath() is "" at runtime, as jswebserver expects
+    context.addServlet(new ServletHolder(new jswebserver()), "/*");
 
-		// Create a WebAppContext to hold the servlet.
-		WebAppContext context = new WebAppContext();
-		context.setContextPath(contextPath);
-		context.setWar(".");
-		//context.setResourceBase(".");
-		//context.setDescriptor("src/main/webapp/WEB-INF/web.xml");
+    server.setHandler(context);
+    server.start();
 
-		// Add the content servlet to the context with dynamic path.
-		ServletHolder servletHolder = new ServletHolder(new jswebserver());
-		context.addServlet(servletHolder, "/*");
+    System.out.println("jswebserver listening on port " + port);
+    server.join();
+  }
 
-		// Set the context handler to the server.
-		server.setHandler(context);
-
-		try {
-			// Start the server.
-			server.start();
-			System.out.println("Server started at http://localhost:" +  Integer.toString(port) + " contextPath:" + contextPath);
-			server.join();
-		} catch (Exception e) {
-			e.printStackTrace();
-			System.exit(1);
-		}
-	}
 }

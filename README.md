@@ -1,7 +1,8 @@
 # jswebserver
 Create Web Applications With JavaScript on the Server And Client Side Using Your Own WebServer
 
-
+jswebserver is a GraalVM JDK JavaScript that allows developers to build a localized web sites.
+similar to whitefoxsqltool: https://github.com/LaranIkal/whitefoxsqltool
 
 ===>>> What is jswebserver:
   - A very light web server app that works with Java 25 and up.
@@ -12,17 +13,19 @@ Create Web Applications With JavaScript on the Server And Client Side Using Your
 
   1.- Download and install GraalVM Java JDK 25:
 
-    1.1.- Go to https://www.graalvm.org/downloads/
+    1.1.- Install Java from graalvm(https://www.graalvm.org/), Go to https://github.com/graalvm/graalvm-ce-builds/releases/ 
+            (GraalVM Community Version, we don't need PGO-Profile-Guided Optimization, which comes with the licensed graalVM version)
+            last jss version I used : graalvm-community-25.4.4.1.1+1.1 
     1.2.- Select your OS, Windows or Linux from the list.
-    1.3.- Download the latest Java JDK 25 version in a ZIP file, normally if you click on the Download button, it will download the ZIP file.
+    1.3.- Download the latest Java JDK 25 version in a ZIP file.
     1.4.- Using the filemanager, navigate to the folder where you downloaded the ZIP file.
     1.5.- Right-click the ZIP file and select Extract All… (or use a tool like 7-Zip/WinRAR).
-          You will have a folder similar to this folder name: graalvm-community-25.3.4.1+1.1
+          You will have a folder similar to this folder name: graalvm-community-25.4.4.1.1+1.1 
           To keep the path short, rename folder to:graalvmjdk25
 
     1.6.- Move the folder to a short location, like this: C:\Apps\graalvmjdk25
 
-Note. To run the jswebserver you can use other JDK than GraalVM, like: https://adoptium.net/ JDK 25
+Note. To just run the jswebserver jar you can use other JDK than GraalVM, like: https://adoptium.net/ JDK 25
 
 Set Environment Variables on Windows
 
@@ -72,16 +75,17 @@ Set Environment Variables on Windows
 
 # Compiling the source code:
 
-- Install Java from graalvm(https://www.graalvm.org/) community(https://github.com/graalvm/graalvm-ce-builds/releases), 
-last jss version I used : Java GraalVM Community LTS 25
+- Install Java from graalvm(https://www.graalvm.org/), Go to https://github.com/graalvm/graalvm-ce-builds/releases/ 
+   (GraalVM Community Version, we don't need PGO-Profile-Guided Optimization, which comes with the licensed graalVM version)
+   last jss version I used : graalvm-community-25.4.4.1.1+1.1 
 - Install Maven(https://maven.apache.org/download.cgi), last jss version, I used : Apache Maven 3.9.12
 - Configure your path variable to run Java and Maven, example on Linux:
 
 Add to your .bashrc, and restart your computer:
 
-export PATH="$HOME/Apps/Maven/apache-maven-3.9.12/bin:$PATH"
-export JAVA_HOME="$HOME/Apps/Java/graalvm-community-25.3.4.1+1.1"
-export PATH="$JAVA_HOME/bin:$PATH"
+- export PATH="$HOME/Apps/Maven/apache-maven-3.9.12/bin:$PATH"
+- export JAVA_HOME="$HOME/Apps/Java/graalvm-community-25.4.4.1.1+1.1"
+- export PATH="$JAVA_HOME/bin:$PATH"
 
 Open the file manager and go to the directory where you have jss, right-(mouse)clik on empty space and open a terminal window.
 
